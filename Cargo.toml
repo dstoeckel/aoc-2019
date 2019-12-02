@@ -11,3 +11,7 @@ edition = "2018"
 [[bin]]
 name = "01-fuel"
 path = "src/01-fuel.rs"
+
+[[bin]]
+name = "02-intcode"
+path = "src/02-intcode.rs"
