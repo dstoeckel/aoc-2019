@@ -15,3 +15,7 @@ path = "src/01-fuel.rs"
 [[bin]]
 name = "02-intcode"
 path = "src/02-intcode.rs"
+
+[[bin]]
+name = "03-intersection"
+path = "src/03-intersection.rs"
