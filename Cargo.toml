@@ -19,3 +19,7 @@ path = "src/02-intcode.rs"
 [[bin]]
 name = "03-intersection"
 path = "src/03-intersection.rs"
+
+[[bin]]
+name = "04-passcode"
+path = "src/04-passcode.rs"
