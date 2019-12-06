@@ -27,3 +27,7 @@ path = "src/04-passcode.rs"
 [[bin]]
 name = "05-intcode"
 path = "src/05-intcode.rs"
+
+[[bin]]
+name = "06-orbit"
+path = "src/06-orbit.rs"
