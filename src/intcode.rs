@@ -22,14 +22,102 @@ fn test_examples_3() {
 #[test]
 fn test_examples_4() {
     let instr = vec![3, 0, 4, 0, 99];
-    let mut input = std::io::BufReader::new("10\n".as_bytes());
-    assert_eq!(10, evaluate_impl(instr, &mut input));
+    let mut io = BufIo::new(&[10]);
+    assert_eq!(10, evaluate_io(instr, &mut io));
 }
 
 #[test]
 fn test_decode() {
     assert_eq!([1, 0, 0, 0], decode_opcode(1));
     assert_eq!([99, 1, 0, 1], decode_opcode(10199))
+}
+
+pub trait Io {
+    fn input(&mut self) -> isize;
+    fn output(&mut self, o: isize);
+}
+
+struct StdIo;
+
+impl Io for StdIo {
+    fn input(&mut self) -> isize {
+        print!("Input: ");
+        std::io::stdout().flush().unwrap();
+        let mut buffer = String::new();
+        std::io::stdin().read_line(&mut buffer).unwrap();
+        str::parse::<isize>(&buffer.trim()).unwrap()
+    }
+
+    fn output(&mut self, o: isize) {
+        println!("{}", o);
+    }
+}
+
+pub struct ChannelIo {
+    sender: std::sync::mpsc::Sender<isize>,
+    receiver: std::sync::mpsc::Receiver<isize>,
+    last_output: Option<isize>,
+}
+
+impl ChannelIo {
+    pub fn new(
+        sender: std::sync::mpsc::Sender<isize>,
+        receiver: std::sync::mpsc::Receiver<isize>,
+    ) -> ChannelIo {
+        ChannelIo {
+            sender,
+            receiver,
+            last_output: None,
+        }
+    }
+
+    pub fn last(&self) -> Option<isize> {
+        self.last_output
+    }
+}
+
+impl Io for ChannelIo {
+    fn input(&mut self) -> isize {
+        self.receiver.recv().unwrap()
+    }
+
+    fn output(&mut self, o: isize) {
+        self.last_output = Some(o);
+
+        let _ = self.sender.send(o);
+    }
+}
+
+pub struct BufIo<'a> {
+    buf_in: &'a [isize],
+    buf_out: Vec<isize>,
+    cursor_in: usize,
+}
+
+impl<'a> BufIo<'a> {
+    pub fn new(input: &'a [isize]) -> BufIo<'a> {
+        BufIo {
+            buf_in: input,
+            buf_out: Vec::new(),
+            cursor_in: 0,
+        }
+    }
+
+    pub fn get(&self, i: usize) -> isize {
+        self.buf_out[i]
+    }
+}
+
+impl<'a> Io for BufIo<'a> {
+    fn input(&mut self) -> isize {
+        let result = self.buf_in[self.cursor_in];
+        self.cursor_in += 1;
+        result
+    }
+
+    fn output(&mut self, o: isize) {
+        self.buf_out.push(o);
+    }
 }
 
 fn decode_opcode(mut op: isize) -> [u8; 4] {
@@ -83,10 +171,10 @@ fn load_ptr(instructions: &Vec<isize>, pos: usize, mode: u8) -> usize {
 }
 
 pub(crate) fn evaluate(instructions: Vec<isize>) -> isize {
-    evaluate_impl(instructions, &mut std::io::BufReader::new(std::io::stdin()))
+    evaluate_io(instructions, &mut StdIo {})
 }
 
-fn evaluate_impl<R: std::io::BufRead>(mut instructions: Vec<isize>, reader: &mut R) -> isize {
+pub(crate) fn evaluate_io<T: Io>(mut instructions: Vec<isize>, io: &mut T) -> isize {
     let mut i = 0;
     while i < instructions.len() {
         let opcode = decode_opcode(instructions[i]);
@@ -105,17 +193,11 @@ fn evaluate_impl<R: std::io::BufRead>(mut instructions: Vec<isize>, reader: &mut
                 4
             }
             3 => {
-                print!("Input: ");
-                std::io::stdout().flush().unwrap();
-                let mut buffer = String::new();
-                reader.read_line(&mut buffer).unwrap();
-                let input = str::parse::<isize>(&buffer.trim()).unwrap();
-
-                store(&mut instructions, i + 1, input);
+                store(&mut instructions, i + 1, io.input());
                 2
             }
             4 => {
-                println!("{}", load_argument(&instructions, i + 1, opcode[1]));
+                io.output(load_argument(&instructions, i + 1, opcode[1]));
                 2
             }
             5 => {
