@@ -35,3 +35,7 @@ path = "src/06-orbit.rs"
 [[bin]]
 name = "07-amplifier"
 path = "src/07-amplifier.rs"
+
+[[bin]]
+name = "08-sif"
+path = "src/08-sif.rs"
