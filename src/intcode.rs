@@ -34,7 +34,9 @@ fn test_decode() {
 
 #[test]
 fn test_relative() {
-    let instr = vec![109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99];
+    let instr = vec![
+        109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
+    ];
     let instr_ = instr.clone();
     let mut io = BufIo::new(&[]);
     evaluate_io(instr, &mut io);
@@ -46,7 +48,7 @@ fn test_relative() {
 
 #[test]
 fn test_large_num() {
-    let instr = vec![1102,34915192,34915192,7,4,7,99,0];
+    let instr = vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0];
     let mut io = BufIo::new(&[]);
     evaluate_io(instr, &mut io);
     assert_eq!(true, io.get(0) >= 1_000_000_000_000_000);
@@ -54,7 +56,7 @@ fn test_large_num() {
 
 #[test]
 fn test_large_num_2() {
-    let instr = vec![104,1125899906842624,99];
+    let instr = vec![104, 1125899906842624, 99];
     let mut io = BufIo::new(&[]);
     evaluate_io(instr, &mut io);
     assert_eq!(1125899906842624, io.get(0));
@@ -152,6 +154,25 @@ impl<'a> Io for BufIo<'a> {
     }
 }
 
+pub fn evaluate_io(instructions: Vec<isize>, io: &mut dyn Io) -> isize {
+    let mut interpreter = Intcode::new(instructions);
+
+    let mut input = 0;
+    loop {
+        match interpreter.step(input) {
+            State::Input => input = io.input(),
+            State::Output(o) => io.output(o),
+            State::Terminated => break,
+        }
+    }
+    interpreter.first_cell()
+}
+
+pub fn evaluate(instructions: Vec<isize>) -> isize {
+    let mut io = StdIo {};
+    evaluate_io(instructions, &mut io)
+}
+
 fn decode_opcode(mut op: isize) -> [u8; 4] {
     let mut result = [0u8; 4];
 
@@ -168,122 +189,154 @@ fn decode_opcode(mut op: isize) -> [u8; 4] {
     result
 }
 
-fn load_argument(instructions: &Vec<isize>, pos: usize, mode: u8, base: isize) -> isize {
-    let value = instructions[pos];
+pub enum State {
+    Terminated,
+    Output(isize),
+    Input,
+}
 
-    match mode {
-        0 => {
-            if value < 0 {
-                panic!("Encountered negative position!");
-            }
-            instructions[value as usize]
+pub struct Intcode {
+    instructions: Vec<isize>,
+    base: isize,
+    iptr: usize,
+    input_requested: bool,
+}
+
+impl Intcode {
+    pub fn new(mut instructions: Vec<isize>) -> Intcode {
+        instructions.extend([0; 1000].iter());
+        Intcode {
+            instructions,
+            base: 0,
+            iptr: 0,
+            input_requested: false,
         }
-        1 => value,
-        2 => instructions[(base + value) as usize],
-        _ => panic!("Unhandled parameter mode!"),
     }
-}
 
-fn store(instructions: &mut Vec<isize>, pos: usize, value: isize, mode: u8, base: isize) {
-    let pos = instructions[pos];
+    pub fn first_cell(&self) -> isize {
+        self.instructions[0]
+    }
 
-    match mode {
-        0 => {
-            if pos < 0 {
-                panic!("Encountered negative position!");
+    fn decode_opcode(&self) -> [u8; 4] {
+        decode_opcode(self.instructions[self.iptr])
+    }
+
+    fn load_argument(&self, pos: usize, mode: &[u8; 4]) -> isize {
+        let value = self.instructions[self.iptr + pos];
+
+        match mode[pos] {
+            0 => {
+                if value < 0 {
+                    panic!("Encountered negative position!");
+                }
+                self.instructions[value as usize]
             }
-            instructions[pos as usize] = value;
+            1 => value,
+            2 => self.instructions[(self.base + value) as usize],
+            _ => panic!("Unhandled parameter mode!"),
         }
-        1 => panic!("Absolute mode not supported for store operation"),
-        2 => {
-            instructions[(base + pos) as usize] = value;
-        }
-        _ => panic!("Unhandled parameter mode!")
     }
-}
 
-fn load_ptr(instructions: &Vec<isize>, pos: usize, mode: u8, base: isize) -> usize {
-    let ptr = load_argument(&instructions, pos, mode, base);
+    fn store(&mut self, pos: usize, value: isize, opcode: &[u8; 4]) {
+        let address = self.instructions[self.iptr + pos];
 
-    if ptr < 0 {
-        panic!("Invalid instruction pointer!")
-    }
-    ptr as usize
-}
-
-pub(crate) fn evaluate(instructions: Vec<isize>) -> isize {
-    evaluate_io(instructions, &mut StdIo {})
-}
-
-pub(crate) fn evaluate_io<T: Io>(mut instructions: Vec<isize>, io: &mut T) -> isize {
-    let mut i = 0;
-    let mut base = 0;
-
-    instructions.extend([0; 1000].iter());
-    while i < instructions.len() {
-        let opcode = decode_opcode(instructions[i]);
-
-        let stride = match opcode[0] {
-            1 => {
-                let s1 = load_argument(&instructions, i + 1, opcode[1], base);
-                let s2 = load_argument(&instructions, i + 2, opcode[2], base);
-                store(&mut instructions, i + 3, s1 + s2, opcode[3], base);
-                4
+        match opcode[pos] {
+            0 => {
+                if address < 0 {
+                    panic!("Encountered negative position!");
+                }
+                self.instructions[address as usize] = value;
             }
+            1 => panic!("Absolute mode not supported for store operation"),
             2 => {
-                let s1 = load_argument(&instructions, i + 1, opcode[1], base);
-                let s2 = load_argument(&instructions, i + 2, opcode[2], base);
-                store(&mut instructions, i + 3, s1 * s2, opcode[3], base);
-                4
+                self.instructions[(self.base + address) as usize] = value;
             }
-            3 => {
-                store(&mut instructions, i + 1, io.input(), opcode[1], base);
-                2
-            }
-            4 => {
-                io.output(load_argument(&instructions, i + 1, opcode[1], base));
-                2
-            }
-            5 => {
-                if load_argument(&instructions, i + 1, opcode[1], base) != 0 {
-                    i = load_ptr(&instructions, i + 2, opcode[2], base);
-                    0
-                } else {
-                    3
-                }
-            }
-            6 => {
-                if load_argument(&instructions, i + 1, opcode[1], base) == 0 {
-                    i = load_ptr(&instructions, i + 2, opcode[2], base);
-                    0
-                } else {
-                    3
-                }
-            }
-            7 => {
-                let s1 = load_argument(&instructions, i + 1, opcode[1], base);
-                let s2 = load_argument(&instructions, i + 2, opcode[2], base);
-
-                store(&mut instructions, i + 3, (s1 < s2) as isize, opcode[3], base);
-                4
-            }
-            8 => {
-                let s1 = load_argument(&instructions, i + 1, opcode[1], base);
-                let s2 = load_argument(&instructions, i + 2, opcode[2], base);
-
-                store(&mut instructions, i + 3, (s1 == s2) as isize, opcode[3], base);
-                4
-            }
-            9 => {
-                base += load_argument(&instructions, i + 1, opcode[1], base);
-                2
-            }
-            99 => break,
-            o => panic!("Unhandled opcode {}", o),
-        };
-
-        i += stride;
+            _ => panic!("Unhandled parameter mode!"),
+        }
     }
 
-    instructions[0]
+    fn load_ptr(&self, pos: usize, opcode: &[u8; 4]) -> usize {
+        let ptr = self.load_argument(pos, opcode);
+
+        if ptr < 0 {
+            panic!("Invalid instruction pointer!")
+        }
+        ptr as usize
+    }
+
+    pub fn step(&mut self, input: isize) -> State {
+        while self.iptr < self.instructions.len() {
+            let opcode = self.decode_opcode();
+
+            let stride = match opcode[0] {
+                1 => {
+                    let s1 = self.load_argument(1, &opcode);
+                    let s2 = self.load_argument(2, &opcode);
+                    self.store(3, s1 + s2, &opcode);
+                    4
+                }
+                2 => {
+                    let s1 = self.load_argument(1, &opcode);
+                    let s2 = self.load_argument(2, &opcode);
+                    self.store(3, s1 * s2, &opcode);
+                    4
+                }
+                3 => {
+                    if self.input_requested {
+                        self.store(1, input, &opcode);
+                        self.input_requested = false;
+                        2
+                    } else {
+                        self.input_requested = true;
+                        return State::Input;
+                    }
+                }
+                4 => {
+                    let result = self.load_argument(1, &opcode);
+                    self.iptr += 2;
+                    return State::Output(result);
+                }
+                5 => {
+                    if self.load_argument(1, &opcode) != 0 {
+                        self.iptr = self.load_ptr(2, &opcode);
+                        0
+                    } else {
+                        3
+                    }
+                }
+                6 => {
+                    if self.load_argument(1, &opcode) == 0 {
+                        self.iptr = self.load_ptr(2, &opcode);
+                        0
+                    } else {
+                        3
+                    }
+                }
+                7 => {
+                    let s1 = self.load_argument(1, &opcode);
+                    let s2 = self.load_argument(2, &opcode);
+
+                    self.store(3, (s1 < s2) as isize, &opcode);
+                    4
+                }
+                8 => {
+                    let s1 = self.load_argument(1, &opcode);
+                    let s2 = self.load_argument(2, &opcode);
+
+                    self.store(3, (s1 == s2) as isize, &opcode);
+                    4
+                }
+                9 => {
+                    self.base += self.load_argument(1, &opcode);
+                    2
+                }
+                99 => return State::Terminated,
+                o => panic!("Unhandled opcode {}", o),
+            };
+
+            self.iptr += stride;
+        }
+
+        panic!("Reached end of memory!");
+    }
 }
