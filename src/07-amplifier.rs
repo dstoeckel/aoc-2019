@@ -1,7 +1,5 @@
 use std::io::Read;
 
-mod intcode;
-
 #[test]
 fn test_next_permutation() {
     let mut data = [0, 1, 2];

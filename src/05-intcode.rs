@@ -1,7 +1,5 @@
 use std::io::Read;
 
-mod intcode;
-
 fn main() {
     let path = std::env::args()
         .nth(1)

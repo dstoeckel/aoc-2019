@@ -43,3 +43,7 @@ path = "src/08-sif.rs"
 [[bin]]
 name = "09-boost"
 path = "src/09-boost.rs"
+
+[lib]
+name = "intcode"
+path = "src/intcode.rs"
