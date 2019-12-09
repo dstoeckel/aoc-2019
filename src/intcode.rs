@@ -83,41 +83,6 @@ impl Io for StdIo {
     }
 }
 
-pub struct ChannelIo {
-    sender: std::sync::mpsc::Sender<isize>,
-    receiver: std::sync::mpsc::Receiver<isize>,
-    last_output: Option<isize>,
-}
-
-impl ChannelIo {
-    pub fn new(
-        sender: std::sync::mpsc::Sender<isize>,
-        receiver: std::sync::mpsc::Receiver<isize>,
-    ) -> ChannelIo {
-        ChannelIo {
-            sender,
-            receiver,
-            last_output: None,
-        }
-    }
-
-    pub fn last(&self) -> Option<isize> {
-        self.last_output
-    }
-}
-
-impl Io for ChannelIo {
-    fn input(&mut self) -> isize {
-        self.receiver.recv().unwrap()
-    }
-
-    fn output(&mut self, o: isize) {
-        self.last_output = Some(o);
-
-        let _ = self.sender.send(o);
-    }
-}
-
 pub struct BufIo<'a> {
     buf_in: &'a [isize],
     buf_out: Vec<isize>,
@@ -189,6 +154,7 @@ fn decode_opcode(mut op: isize) -> [u8; 4] {
     result
 }
 
+#[derive(PartialEq)]
 pub enum State {
     Terminated,
     Output(isize),
@@ -211,6 +177,10 @@ impl Intcode {
             iptr: 0,
             input_requested: false,
         }
+    }
+
+    pub fn is_terminated(&self) -> bool {
+        self.instructions[self.iptr] == 99
     }
 
     pub fn first_cell(&self) -> isize {

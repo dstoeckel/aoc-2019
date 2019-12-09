@@ -1,4 +1,5 @@
 use std::io::Read;
+use intcode::*;
 
 #[test]
 fn test_next_permutation() {
@@ -59,7 +60,7 @@ fn test_compute_feedback_amplification1() {
 
     assert_eq!(
         139629729,
-        compute_feedback_amplification(&instructions, &setting).unwrap()
+        compute_feedback_amplification(&instructions, &setting)
     );
 }
 
@@ -73,7 +74,7 @@ fn test_compute_feedback_amplification2() {
     let setting = [9, 7, 8, 5, 6];
     assert_eq!(
         18216,
-        compute_feedback_amplification(&instructions, &setting).unwrap()
+        compute_feedback_amplification(&instructions, &setting)
     );
 }
 
@@ -108,68 +109,46 @@ fn compute_amplification(instructions: &Vec<isize>, input: &[isize]) -> isize {
     let mut output = 0;
     for boost in input {
         let data = [*boost, output];
-        let mut io = intcode::BufIo::new(&data);
-        intcode::evaluate_io(instructions.clone(), &mut io);
+        let mut io = BufIo::new(&data);
+        evaluate_io(instructions.clone(), &mut io);
         output = io.get(0);
     }
 
     output
 }
 
-fn compute_feedback_amplification(instructions: &Vec<isize>, input: &[isize]) -> Option<isize> {
-    use std::sync::mpsc::channel;
+fn initialize(instructions: &Vec<isize>, input: isize) -> Intcode {
+    let mut icode = Intcode::new(instructions.clone());
 
-    let (send_a, recv_a) = channel();
-    let (send_b, recv_b) = channel();
-    let (send_c, recv_c) = channel();
-    let (send_d, recv_d) = channel();
-    let (send_e, recv_e) = channel();
+    assert!(icode.step(0) == State::Input);
+    assert!(icode.step(input) == State::Input);
 
-    send_a.send(input[1]).unwrap();
-    send_b.send(input[2]).unwrap();
-    send_c.send(input[3]).unwrap();
-    send_d.send(input[4]).unwrap();
-    send_e.send(input[0]).unwrap();
+    icode
+}
 
-    send_e.send(0).unwrap();
+fn feed_input(icode: &mut Intcode, input: isize) -> isize {
+    let output = match icode.step(input) {
+        State::Output(o) => o,
+        _ => panic!("Unexpected state"),
+    };
 
-    let instr_a = instructions.clone();
-    let a = std::thread::spawn(move || {
-        let mut io = intcode::ChannelIo::new(send_a, recv_e);
-        intcode::evaluate_io(instr_a, &mut io);
-    });
+    match icode.step(0) {
+        State::Input | State::Terminated => output,
+        _ => panic!("Unexpected State"),
+    }
+}
 
-    let instr_b = instructions.clone();
-    let b = std::thread::spawn(move || {
-        let mut io = intcode::ChannelIo::new(send_b, recv_a);
-        intcode::evaluate_io(instr_b, &mut io);
-    });
+fn compute_feedback_amplification(instructions: &Vec<isize>, input: &[isize]) -> isize {
+    let mut amplifiers: Vec<_> = input.iter().map(|i| initialize(instructions, *i)).collect();
 
-    let instr_c = instructions.clone();
-    let c = std::thread::spawn(move || {
-        let mut io = intcode::ChannelIo::new(send_c, recv_b);
-        intcode::evaluate_io(instr_c, &mut io);
-    });
+    let mut data = 0;
+    let mut i = 0;
+    while !amplifiers[i].is_terminated() {
+        data = feed_input(&mut amplifiers[i], data);
+        i = (i+1) % amplifiers.len();
+    }
 
-    let instr_d = instructions.clone();
-    let d = std::thread::spawn(move || {
-        let mut io = intcode::ChannelIo::new(send_d, recv_c);
-        intcode::evaluate_io(instr_d, &mut io);
-    });
-
-    let instr_e = instructions.clone();
-    let e = std::thread::spawn(move || {
-        let mut io = intcode::ChannelIo::new(send_e, recv_d);
-        intcode::evaluate_io(instr_e, &mut io);
-
-        io.last()
-    });
-
-    a.join().unwrap();
-    b.join().unwrap();
-    c.join().unwrap();
-    d.join().unwrap();
-    e.join().unwrap()
+    data
 }
 
 fn best_simple_amplifier_setting(instructions: &Vec<isize>) {
@@ -192,11 +171,11 @@ fn best_simple_amplifier_setting(instructions: &Vec<isize>) {
 fn best_feedback_amplifier_setting(instructions: &Vec<isize>) {
     let mut input: Vec<isize> = (5..10).collect();
 
-    let mut best_val = compute_feedback_amplification(instructions, &input).unwrap();
+    let mut best_val = compute_feedback_amplification(instructions, &input);
     let mut best = input.clone();
 
     while next_permutation(input.as_mut_slice()) {
-        let val = compute_feedback_amplification(instructions, &input).unwrap();
+        let val = compute_feedback_amplification(instructions, &input);
         if val > best_val {
             best_val = val;
             best = input.clone();
