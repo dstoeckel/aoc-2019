@@ -32,6 +32,34 @@ fn test_decode() {
     assert_eq!([99, 1, 0, 1], decode_opcode(10199))
 }
 
+#[test]
+fn test_relative() {
+    let instr = vec![109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99];
+    let instr_ = instr.clone();
+    let mut io = BufIo::new(&[]);
+    evaluate_io(instr, &mut io);
+
+    for i in 0..instr_.len() {
+        assert_eq!(instr_[i], io.get(i));
+    }
+}
+
+#[test]
+fn test_large_num() {
+    let instr = vec![1102,34915192,34915192,7,4,7,99,0];
+    let mut io = BufIo::new(&[]);
+    evaluate_io(instr, &mut io);
+    assert_eq!(true, io.get(0) >= 1_000_000_000_000_000);
+}
+
+#[test]
+fn test_large_num_2() {
+    let instr = vec![104,1125899906842624,99];
+    let mut io = BufIo::new(&[]);
+    evaluate_io(instr, &mut io);
+    assert_eq!(1125899906842624, io.get(0));
+}
+
 pub trait Io {
     fn input(&mut self) -> isize;
     fn output(&mut self, o: isize);
@@ -106,6 +134,10 @@ impl<'a> BufIo<'a> {
     pub fn get(&self, i: usize) -> isize {
         self.buf_out[i]
     }
+
+    pub fn len(&self) -> usize {
+        self.buf_out.len()
+    }
 }
 
 impl<'a> Io for BufIo<'a> {
@@ -136,7 +168,7 @@ fn decode_opcode(mut op: isize) -> [u8; 4] {
     result
 }
 
-fn load_argument(instructions: &Vec<isize>, pos: usize, mode: u8) -> isize {
+fn load_argument(instructions: &Vec<isize>, pos: usize, mode: u8, base: isize) -> isize {
     let value = instructions[pos];
 
     match mode {
@@ -147,22 +179,31 @@ fn load_argument(instructions: &Vec<isize>, pos: usize, mode: u8) -> isize {
             instructions[value as usize]
         }
         1 => value,
+        2 => instructions[(base + value) as usize],
         _ => panic!("Unhandled parameter mode!"),
     }
 }
 
-fn store(instructions: &mut Vec<isize>, pos: usize, value: isize) {
+fn store(instructions: &mut Vec<isize>, pos: usize, value: isize, mode: u8, base: isize) {
     let pos = instructions[pos];
 
-    if pos < 0 {
-        panic!("Encountered negative position!");
+    match mode {
+        0 => {
+            if pos < 0 {
+                panic!("Encountered negative position!");
+            }
+            instructions[pos as usize] = value;
+        }
+        1 => panic!("Absolute mode not supported for store operation"),
+        2 => {
+            instructions[(base + pos) as usize] = value;
+        }
+        _ => panic!("Unhandled parameter mode!")
     }
-
-    instructions[pos as usize] = value;
 }
 
-fn load_ptr(instructions: &Vec<isize>, pos: usize, mode: u8) -> usize {
-    let ptr = load_argument(&instructions, pos, mode);
+fn load_ptr(instructions: &Vec<isize>, pos: usize, mode: u8, base: isize) -> usize {
+    let ptr = load_argument(&instructions, pos, mode, base);
 
     if ptr < 0 {
         panic!("Invalid instruction pointer!")
@@ -176,59 +217,66 @@ pub(crate) fn evaluate(instructions: Vec<isize>) -> isize {
 
 pub(crate) fn evaluate_io<T: Io>(mut instructions: Vec<isize>, io: &mut T) -> isize {
     let mut i = 0;
+    let mut base = 0;
+
+    instructions.extend([0; 1000].iter());
     while i < instructions.len() {
         let opcode = decode_opcode(instructions[i]);
 
         let stride = match opcode[0] {
             1 => {
-                let s1 = load_argument(&instructions, i + 1, opcode[1]);
-                let s2 = load_argument(&instructions, i + 2, opcode[2]);
-                store(&mut instructions, i + 3, s1 + s2);
+                let s1 = load_argument(&instructions, i + 1, opcode[1], base);
+                let s2 = load_argument(&instructions, i + 2, opcode[2], base);
+                store(&mut instructions, i + 3, s1 + s2, opcode[3], base);
                 4
             }
             2 => {
-                let s1 = load_argument(&instructions, i + 1, opcode[1]);
-                let s2 = load_argument(&instructions, i + 2, opcode[2]);
-                store(&mut instructions, i + 3, s1 * s2);
+                let s1 = load_argument(&instructions, i + 1, opcode[1], base);
+                let s2 = load_argument(&instructions, i + 2, opcode[2], base);
+                store(&mut instructions, i + 3, s1 * s2, opcode[3], base);
                 4
             }
             3 => {
-                store(&mut instructions, i + 1, io.input());
+                store(&mut instructions, i + 1, io.input(), opcode[1], base);
                 2
             }
             4 => {
-                io.output(load_argument(&instructions, i + 1, opcode[1]));
+                io.output(load_argument(&instructions, i + 1, opcode[1], base));
                 2
             }
             5 => {
-                if load_argument(&instructions, i + 1, opcode[1]) != 0 {
-                    i = load_ptr(&instructions, i + 2, opcode[2]);
+                if load_argument(&instructions, i + 1, opcode[1], base) != 0 {
+                    i = load_ptr(&instructions, i + 2, opcode[2], base);
                     0
                 } else {
                     3
                 }
             }
             6 => {
-                if load_argument(&instructions, i + 1, opcode[1]) == 0 {
-                    i = load_ptr(&instructions, i + 2, opcode[2]);
+                if load_argument(&instructions, i + 1, opcode[1], base) == 0 {
+                    i = load_ptr(&instructions, i + 2, opcode[2], base);
                     0
                 } else {
                     3
                 }
             }
             7 => {
-                let s1 = load_argument(&instructions, i + 1, opcode[1]);
-                let s2 = load_argument(&instructions, i + 2, opcode[2]);
+                let s1 = load_argument(&instructions, i + 1, opcode[1], base);
+                let s2 = load_argument(&instructions, i + 2, opcode[2], base);
 
-                store(&mut instructions, i + 3, (s1 < s2) as isize);
+                store(&mut instructions, i + 3, (s1 < s2) as isize, opcode[3], base);
                 4
             }
             8 => {
-                let s1 = load_argument(&instructions, i + 1, opcode[1]);
-                let s2 = load_argument(&instructions, i + 2, opcode[2]);
+                let s1 = load_argument(&instructions, i + 1, opcode[1], base);
+                let s2 = load_argument(&instructions, i + 2, opcode[2], base);
 
-                store(&mut instructions, i + 3, (s1 == s2) as isize);
+                store(&mut instructions, i + 3, (s1 == s2) as isize, opcode[3], base);
                 4
+            }
+            9 => {
+                base += load_argument(&instructions, i + 1, opcode[1], base);
+                2
             }
             99 => break,
             o => panic!("Unhandled opcode {}", o),

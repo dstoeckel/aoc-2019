@@ -39,3 +39,7 @@ path = "src/07-amplifier.rs"
 [[bin]]
 name = "08-sif"
 path = "src/08-sif.rs"
+
+[[bin]]
+name = "09-boost"
+path = "src/09-boost.rs"
