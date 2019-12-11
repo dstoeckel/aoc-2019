@@ -1,5 +1,5 @@
-use std::io::Read;
 use intcode::*;
+use std::io::Read;
 
 #[test]
 fn test_next_permutation() {
@@ -145,7 +145,7 @@ fn compute_feedback_amplification(instructions: &Vec<isize>, input: &[isize]) ->
     let mut i = 0;
     while !amplifiers[i].is_terminated() {
         data = feed_input(&mut amplifiers[i], data);
-        i = (i+1) % amplifiers.len();
+        i = (i + 1) % amplifiers.len();
     }
 
     data
