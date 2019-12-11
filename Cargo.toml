@@ -44,6 +44,10 @@ path = "src/08-sif.rs"
 name = "09-boost"
 path = "src/09-boost.rs"
 
+[[bin]]
+name = "10-asteroids"
+path = "src/10-asteroids.rs"
+
 [lib]
 name = "intcode"
 path = "src/intcode.rs"
