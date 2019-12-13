@@ -1,6 +1,6 @@
 use regex::Regex;
-use std::io::BufRead;
 use std::collections::HashMap;
+use std::io::BufRead;
 
 #[test]
 fn test_simulate() {
@@ -65,7 +65,7 @@ struct Body1d {
 
 impl Body1d {
     fn new(p: isize) -> Body1d {
-        Body1d { p, v:0}
+        Body1d { p, v: 0 }
     }
 }
 
@@ -229,7 +229,10 @@ fn main() {
     let period_z = simulate_1d(&mut body_z, 1000000u64);
 
     if let (Some(period_x), Some(period_y), Some(period_z)) = (period_x, period_y, period_z) {
-        println!("Got periods x = {}, y = {}, z = {}", period_x, period_y, period_z);
+        println!(
+            "Got periods x = {}, y = {}, z = {}",
+            period_x, period_y, period_z
+        );
 
         let tmp = period_x * (period_y / gcd(period_x, period_y));
         let result = tmp * (period_z / gcd(period_z, tmp));

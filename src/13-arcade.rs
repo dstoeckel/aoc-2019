@@ -1,5 +1,5 @@
-use std::io::{BufRead, Read, Write};
 use intcode::State;
+use std::io::{BufRead, Read, Write};
 
 fn count_block_tiles(instructions: Vec<isize>) {
     let mut io = intcode::BufIo::new(&[]);
@@ -24,7 +24,7 @@ fn update_field(field: &mut [char; 43 * 23], buf: &[isize; 3]) {
         _ => panic!("Unhandled tile type!"),
     };
 
-    field[(buf[0] + buf[1]*43) as usize] = symbol;
+    field[(buf[0] + buf[1] * 43) as usize] = symbol;
 }
 
 fn print_game(field: &[char; 43 * 23], score: isize) {
@@ -64,12 +64,12 @@ fn cheat(instructions: &Vec<isize>) {
                 std::io::stdin().read_line(&mut buffer).unwrap();
                 let time: usize = loop {
                     if let Ok(time) = str::parse(&buffer.trim()) {
-                        break time
+                        break time;
                     }
                 };
 
                 input_sequence.truncate(input_sequence.len() - time);
-            },
+            }
             Some(score) => {
                 println!("You beat the game with a score of {}", score);
                 break;
@@ -141,6 +141,52 @@ fn play_game(mut instructions: Vec<isize>, input_sequence: &mut Vec<isize>) -> O
     }
 }
 
+fn play_game_ai(mut instructions: Vec<isize>) {
+    use std::cmp::Ordering;
+
+    let mut ball_pos = 0;
+    let mut player_pos = 0;
+    let mut score = 0;
+    let mut n_output = 0;
+    let mut output_buffer = [0; 3];
+    let mut input = 0;
+
+    instructions[0] = 2;
+    let mut interpreter = intcode::Intcode::new(instructions);
+    let mut steps = 0;
+    loop {
+        match interpreter.step(input) {
+            State::Input => {
+                steps += 1;
+                input = match ball_pos.cmp(&player_pos) {
+                    Ordering::Less => -1,
+                    Ordering::Equal => 0,
+                    Ordering::Greater => 1,
+                };
+            }
+            State::Output(o) => {
+                output_buffer[n_output] = o;
+                if n_output == 2 {
+                    if output_buffer[0] == -1 && output_buffer[1] == 0 {
+                        score = output_buffer[2];
+                    } else if output_buffer[2] == 4 {
+                        ball_pos = output_buffer[0];
+                    } else if output_buffer[2] == 3 {
+                        player_pos = output_buffer[0];
+                    }
+                    n_output = 0;
+                } else {
+                    n_output += 1;
+                }
+            }
+            State::Terminated => {
+                println!("Score is {} after {} steps.", score, steps);
+                return;
+            }
+        }
+    }
+}
+
 fn main() {
     let path = std::env::args()
         .nth(1)
@@ -148,5 +194,6 @@ fn main() {
 
     let instructions = intcode::read_incode_file(&path);
     count_block_tiles(instructions.clone());
+    play_game_ai(instructions.clone());
     cheat(&instructions);
 }

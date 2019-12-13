@@ -161,8 +161,7 @@ pub fn read_incode_file(path: &str) -> Vec<isize> {
         .read_to_string(&mut code)
         .expect("Error while reading from file.");
 
-     code
-        .trim()
+    code.trim()
         .split(',')
         .map(|x| str::parse(x).unwrap())
         .collect()
