@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Read, Write};
 
 #[test]
 fn test_examples() {
@@ -75,7 +75,7 @@ impl Io for StdIo {
         std::io::stdout().flush().unwrap();
         let mut buffer = String::new();
         std::io::stdin().read_line(&mut buffer).unwrap();
-        str::parse::<isize>(&buffer.trim()).unwrap()
+        str::parse(&buffer.trim()).unwrap()
     }
 
     fn output(&mut self, o: isize) {
@@ -152,6 +152,20 @@ fn decode_opcode(mut op: isize) -> [u8; 4] {
     result[0] = op as u8;
 
     result
+}
+
+pub fn read_incode_file(path: &str) -> Vec<isize> {
+    let mut code = String::new();
+    std::fs::File::open(path)
+        .expect("Could not open input file")
+        .read_to_string(&mut code)
+        .expect("Error while reading from file.");
+
+     code
+        .trim()
+        .split(',')
+        .map(|x| str::parse(x).unwrap())
+        .collect()
 }
 
 #[derive(PartialEq)]
