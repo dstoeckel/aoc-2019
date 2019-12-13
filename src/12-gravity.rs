@@ -1,5 +1,6 @@
 use regex::Regex;
 use std::io::BufRead;
+use std::collections::HashMap;
 
 #[test]
 fn test_simulate() {
@@ -41,6 +42,7 @@ impl Vector {
     }
 }
 
+#[derive(Clone)]
 struct Body {
     p: Vector,
     v: Vector,
@@ -52,6 +54,18 @@ impl Body {
             p,
             v: Vector::zero(),
         }
+    }
+}
+
+#[derive(Hash, PartialEq, Eq, Clone)]
+struct Body1d {
+    p: isize,
+    v: isize,
+}
+
+impl Body1d {
+    fn new(p: isize) -> Body1d {
+        Body1d { p, v:0}
     }
 }
 
@@ -114,9 +128,6 @@ impl std::fmt::Display for Vector {
 
 fn simulate(bodies: &mut Vec<Body>, steps: usize) -> isize {
     let n_body = bodies.len();
-    let mut potential_energy = 0;
-    let mut kinetic_energy = 0;
-    let mut total_energy = 0;
 
     for n in 0..steps {
         for i in 0..(n_body - 1) {
@@ -134,25 +145,67 @@ fn simulate(bodies: &mut Vec<Body>, steps: usize) -> isize {
             a.p += a.v;
             println!("pos = {}, vel = {}>", a.p, a.v);
         }
-
-        potential_energy = 0;
-        kinetic_energy = 0;
-        total_energy = 0;
-        for a in bodies.iter() {
-            let pot = a.p.x.abs() + a.p.y.abs() + a.p.z.abs();
-            let kin = a.v.x.abs() + a.v.y.abs() + a.v.z.abs();
-            potential_energy += pot;
-            kinetic_energy += kin;
-            total_energy += pot * kin;
-        }
-
-        println!(
-            "Step {}: E_pot = {}, E_kin = {}, E_tot = {}",
-            n, potential_energy, kinetic_energy, total_energy
-        );
     }
 
+    let mut potential_energy = 0;
+    let mut kinetic_energy = 0;
+    let mut total_energy = 0;
+
+    for a in bodies.iter() {
+        let pot = a.p.x.abs() + a.p.y.abs() + a.p.z.abs();
+        let kin = a.v.x.abs() + a.v.y.abs() + a.v.z.abs();
+        potential_energy += pot;
+        kinetic_energy += kin;
+        total_energy += pot * kin;
+    }
+
+    println!(
+        "E_pot = {}, E_kin = {}, E_tot = {}",
+        potential_energy, kinetic_energy, total_energy
+    );
+
     total_energy
+}
+
+fn simulate_1d(bodies: &mut Vec<Body1d>, max_steps: u64) -> Option<u64> {
+    let n_body = bodies.len();
+    let mut states = HashMap::new();
+
+    states.insert(bodies.clone(), 0);
+
+    for n in 0..max_steps {
+        for i in 0..(n_body - 1) {
+            for j in (i + 1)..n_body {
+                let delta_v = (bodies[i].p - bodies[j].p).signum();
+                bodies[i].v -= delta_v;
+                bodies[j].v += delta_v;
+            }
+        }
+
+        for b in bodies.iter_mut() {
+            b.p += b.v;
+        }
+
+        if states.contains_key(bodies) {
+            let idx = states.get(bodies).unwrap();
+            return Some(n - idx + 1);
+        }
+
+        states.insert(bodies.clone(), n + 1);
+    }
+
+    return None;
+}
+
+fn gcd(mut a: u64, mut b: u64) -> u64 {
+    while b > 0 {
+        a %= b;
+        let tmp = b;
+        b = a;
+        a = tmp;
+    }
+
+    a
 }
 
 fn main() {
@@ -165,5 +218,24 @@ fn main() {
         .map(|l| parse_position(&l.unwrap()))
         .collect();
 
+    let mut body_x: Vec<_> = bodies.iter().map(|b| Body1d::new(b.p.x)).collect();
+    let mut body_y: Vec<_> = bodies.iter().map(|b| Body1d::new(b.p.y)).collect();
+    let mut body_z: Vec<_> = bodies.iter().map(|b| Body1d::new(b.p.z)).collect();
+
     simulate(&mut bodies, 1000);
+
+    let period_x = simulate_1d(&mut body_x, 1000000u64);
+    let period_y = simulate_1d(&mut body_y, 1000000u64);
+    let period_z = simulate_1d(&mut body_z, 1000000u64);
+
+    if let (Some(period_x), Some(period_y), Some(period_z)) = (period_x, period_y, period_z) {
+        println!("Got periods x = {}, y = {}, z = {}", period_x, period_y, period_z);
+
+        let tmp = period_x * (period_y / gcd(period_x, period_y));
+        let result = tmp * (period_z / gcd(period_z, tmp));
+
+        println!("Common period is {}", result);
+    } else {
+        println!("Could not identify all periods. Consider increasing max step size.")
+    }
 }
