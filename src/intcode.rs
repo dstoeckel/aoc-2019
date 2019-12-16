@@ -154,7 +154,7 @@ fn decode_opcode(mut op: isize) -> [u8; 4] {
     result
 }
 
-pub fn read_incode_file(path: &str) -> Vec<isize> {
+pub fn read_intcode_file(path: &str) -> Vec<isize> {
     let mut code = String::new();
     std::fs::File::open(path)
         .expect("Could not open input file")

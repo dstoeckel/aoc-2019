@@ -61,6 +61,14 @@ path = "src/12-gravity.rs"
 name = "13-arcade"
 path = "src/13-arcade.rs"
 
+[[bin]]
+name = "14-refinery"
+path = "src/14-refinery.rs"
+
+[[bin]]
+name = "15-oxygen"
+path = "src/15-oxygen.rs"
+
 [lib]
 name = "intcode"
 path = "src/intcode.rs"

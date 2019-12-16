@@ -14,6 +14,7 @@ fn test_simulate() {
     assert_eq!(1940, simulate(&mut bodies, 100))
 }
 
+#[test]
 fn test_simulate2() {
     let mut bodies = vec![
         Body::new(Vector::new(-1, 7, 3)),
@@ -129,7 +130,7 @@ impl std::fmt::Display for Vector {
 fn simulate(bodies: &mut Vec<Body>, steps: usize) -> isize {
     let n_body = bodies.len();
 
-    for n in 0..steps {
+    for _n in 0..steps {
         for i in 0..(n_body - 1) {
             for j in (i + 1)..n_body {
                 let diff = bodies[i].p - bodies[j].p;

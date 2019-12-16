@@ -192,7 +192,7 @@ fn main() {
         .nth(1)
         .expect("At least one command line argument is required.");
 
-    let instructions = intcode::read_incode_file(&path);
+    let instructions = intcode::read_intcode_file(&path);
     count_block_tiles(instructions.clone());
     play_game_ai(instructions.clone());
     cheat(&instructions);
