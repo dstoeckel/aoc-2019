@@ -98,6 +98,10 @@ impl<'a> BufIo<'a> {
         }
     }
 
+    pub fn output(&self) -> &Vec<isize> {
+        &self.buf_out
+    }
+
     pub fn get(&self, i: usize) -> isize {
         self.buf_out[i]
     }
@@ -183,7 +187,7 @@ pub struct Intcode {
 
 impl Intcode {
     pub fn new(mut instructions: Vec<isize>) -> Intcode {
-        instructions.extend([0; 1000].iter());
+        instructions.extend([0; 10000].iter());
         Intcode {
             instructions,
             base: 0,

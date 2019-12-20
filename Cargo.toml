@@ -69,6 +69,10 @@ path = "src/14-refinery.rs"
 name = "15-oxygen"
 path = "src/15-oxygen.rs"
 
+[[bin]]
+name = "16-fft"
+path = "src/16-fft.rs"
+
 [lib]
 name = "intcode"
 path = "src/intcode.rs"
