@@ -78,6 +78,10 @@ name = "17-scaffold"
 path = "src/17-scaffold.rs"
 
 [[bin]]
+name = "18-keys"
+path = "src/18-keys.rs"
+
+[[bin]]
 name = "19-tractor"
 path = "src/19-tractor.rs"
 
