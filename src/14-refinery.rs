@@ -13,7 +13,8 @@ fn example_small() {
 
     let reactions = parse_reactions(input.as_bytes());
 
-    let ore = required_ore(&reactions);
+    let mut available = HashMap::new();
+    let ore = required_ore(&reactions, &mut available, 1);
     assert_eq!(165, ore);
 }
 
