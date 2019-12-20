@@ -77,6 +77,10 @@ path = "src/16-fft.rs"
 name = "17-scaffold"
 path = "src/17-scaffold.rs"
 
+[[bin]]
+name = "19-tractor"
+path = "src/19-tractor.rs"
+
 [lib]
 name = "intcode"
 path = "src/intcode.rs"
