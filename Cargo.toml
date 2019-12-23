@@ -93,6 +93,10 @@ path = "src/20-donut.rs"
 name = "21-spring"
 path = "src/21-spring.rs"
 
+[[bin]]
+name = "22-shuffle"
+path = "src/22-shuffle.rs"
+
 [lib]
 name = "intcode"
 path = "src/intcode.rs"
