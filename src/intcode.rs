@@ -83,6 +83,26 @@ impl Io for StdIo {
     }
 }
 
+pub struct AsciiIo;
+
+impl AsciiIo {
+    pub fn new() -> AsciiIo {
+        AsciiIo {}
+    }
+}
+
+impl Io for AsciiIo {
+    fn input(&mut self) -> isize {
+        let mut buffer = [0; 1];
+        std::io::stdin().read(&mut buffer).unwrap();
+        buffer[0] as isize
+    }
+
+    fn output(&mut self, o: isize) {
+        print!("{}", char::from(o as u8));
+    }
+}
+
 pub struct BufIo<'a> {
     buf_in: &'a [isize],
     buf_out: Vec<isize>,

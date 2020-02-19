@@ -97,6 +97,18 @@ path = "src/21-spring.rs"
 name = "22-shuffle"
 path = "src/22-shuffle.rs"
 
+[[bin]]
+name = "23-network"
+path = "src/23-network.rs"
+
+[[bin]]
+name = "24-bugs"
+path = "src/24-bugs.rs"
+
+[[bin]]
+name = "25-santa"
+path = "src/25-santa.rs"
+
 [lib]
 name = "intcode"
 path = "src/intcode.rs"

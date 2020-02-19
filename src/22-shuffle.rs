@@ -28,7 +28,7 @@ fn test_shuffle_solution_in_pos_part2() {
     let reduced = (2904709793044, 83085969022373);
     let dl = 119315717514047;
     let t = 101741582076661;
-    assert_eq!(2020, in_position(104129592782950,reduced, 1, dl));
+    assert_eq!(2020, in_position(104129592782950, reduced, 1, dl));
     assert_eq!(2020, in_position(48838925201242, reduced, 2, dl));
     assert_eq!(2020, in_position(59784798628865, reduced, 3, dl));
     assert_eq!(2020, in_position(73885750177030, reduced, 4, dl));
@@ -48,7 +48,7 @@ fn parse_instruction(s: &str) -> Instruction {
     } else if s.starts_with("cut ") {
         let i = s.split(' ').nth(1).unwrap().parse().unwrap();
         Instruction::Cut(i)
-    } else if s.starts_with("deal with increment "){
+    } else if s.starts_with("deal with increment ") {
         let i = s.split(' ').nth(3).unwrap().parse().unwrap();
         Instruction::WithIncrement(i)
     } else {
@@ -65,7 +65,9 @@ fn reduce(acc: (i128, i128), instr: &Instruction, deck_len: i128) -> (i128, i128
 }
 
 fn reduce_instructions(instr: &[Instruction], deck_len: i128) -> (i128, i128) {
-    instr.iter().fold((1, 0), |acc, instr| reduce(acc, instr, deck_len))
+    instr
+        .iter()
+        .fold((1, 0), |acc, instr| reduce(acc, instr, deck_len))
 }
 
 fn quick_exponent(a: i128, e: i128, m: i128) -> i128 {
@@ -113,7 +115,11 @@ fn execute(x: i128, s: (i128, i128), times: i128, deck_len: i128) -> i128 {
     let sum = (a_n - 1) * inv % deck_len;
 
     let res = (a_n * x + sum * s.1) % deck_len;
-    if res < 0 { res + deck_len } else { res}
+    if res < 0 {
+        res + deck_len
+    } else {
+        res
+    }
 }
 
 fn in_position(x: i128, s: (i128, i128), times: i128, deck_len: i128) -> i128 {
@@ -125,7 +131,11 @@ fn in_position(x: i128, s: (i128, i128), times: i128, deck_len: i128) -> i128 {
 
     let res = ((x - sum * s.1) % deck_len) * pot_inv % deck_len;
 
-    if res < 0 { res + deck_len } else {res}
+    if res < 0 {
+        res + deck_len
+    } else {
+        res
+    }
 }
 
 fn main() {
@@ -143,12 +153,24 @@ fn main() {
     let input = 2019i128;
     let short_deck_len = 10007;
     let reduced = reduce_instructions(&instructions, short_deck_len);
-    println!("Part 1: Position of {} is {}", input, execute(input, reduced, 1, short_deck_len));
+    println!(
+        "Part 1: Position of {} is {}",
+        input,
+        execute(input, reduced, 1, short_deck_len)
+    );
 
     let input = 2020i128;
     let long_deck_len = 119315717514047i128;
     let times = 101741582076661i128;
     let reduced = reduce_instructions(&instructions, long_deck_len);
-    println!("Part 2: Position of {} is {}", input, execute(input, reduced, times, long_deck_len));
-    println!("Part 2: Card in position {} is {}", input, in_position(input, reduced, times, long_deck_len));
+    println!(
+        "Part 2: Position of {} is {}",
+        input,
+        execute(input, reduced, times, long_deck_len)
+    );
+    println!(
+        "Part 2: Card in position {} is {}",
+        input,
+        in_position(input, reduced, times, long_deck_len)
+    );
 }

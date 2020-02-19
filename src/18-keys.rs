@@ -267,7 +267,7 @@ fn bfs_multi(maze: &Maze) -> usize {
             let mut pos = next.pos.clone();
             pos[next.active] = (
                 (pos[next.active].0 as isize + d.0) as usize,
-                (pos[next.active].1 as isize + d.1) as usize
+                (pos[next.active].1 as isize + d.1) as usize,
             );
 
             match map[pos[next.active]] {
